@@ -97,15 +97,16 @@ def main():
     fig = plot.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    x = np.arange(1, 22, 1.0)
+    x = np.arange(10, 22, 1.0)
     y = np.arange(1, 11, 1.0)
     xs, ys = np.meshgrid(x, y)
     print(xs.shape)
     print(ys.shape)
 
     v_mat = np.amax(q_states_actions, axis=2)
-    print(v_mat.shape)
-    ax.plot_wireframe(xs, ys, v_mat, rstride=1, cstride=1)
+    v_mat_trunc = v_mat[:,9:]
+    print(v_mat_trunc.shape)
+    ax.plot_wireframe(xs, ys, v_mat_trunc, rstride=1, cstride=1)
     plot.show()
 
 if __name__ == '__main__':
