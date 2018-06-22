@@ -1,6 +1,7 @@
 from easy21 import Easy21
 import numpy as np
-
+import matplotlib.pyplot as plot 
+from mpl_toolkits.mplot3d import Axes3D
 """
     TD lambda sarsa implementation to solve easy21
 """
@@ -11,23 +12,23 @@ PLAYER_STATE = 21 # 1 - 21
 ACTIONS = 2
 
 # LAMBDA 1 = MC
-LAMBDA = 0
+LAMBDA = 0.1
 # Discount factor
 GAMMA = 1
+
+# our q values function
+q_states_actions = np.zeros((DEALER_STATE, PLAYER_STATE, ACTIONS), dtype=np.float32)
 
 # our number of counts
 possible_states = np.zeros((DEALER_STATE, PLAYER_STATE), dtype=int)
 possible_states_actions = np.zeros((DEALER_STATE, PLAYER_STATE, ACTIONS), dtype=int)
 
-# our q values function
-q_states_actions = np.zeros((DEALER_STATE, PLAYER_STATE, ACTIONS), dtype=np.float32)
-
 # eligibility traces
 e_states_actions = np.zeros((DEALER_STATE, PLAYER_STATE, ACTIONS), dtype=np.float32)
 
+
 def get_count(state):
     dealer, player = state
-    print(" dealer %d player %d ")
     # starts from 0 lol
     return possible_states[dealer-1, player-1]
 
@@ -66,7 +67,15 @@ def main():
     env = Easy21()
     # run 1000 episodes
     runs = 1000
-    # run out episodes
+    
+    global q_states_actions
+    global e_states_actions
+    global possible_states
+    global possible_states_actions
+    global GAMMA
+    global LAMBDA
+
+    # run our episodes
     for t in range(runs):
         # initialize our records
         results = []
@@ -76,23 +85,31 @@ def main():
         #initialise first state and action
         start_state = env.state()  
         action = ep_greedy(start_state)
-        print("start state in our ")
-        while env.is_finished:
+
+        # eligibility traces
+        e_states_actions = np.zeros((DEALER_STATE, PLAYER_STATE, ACTIONS), dtype=np.float32)
+
+        while not env.is_finished():
             current_state = env.state()
             # take action A, observe S' , Reward
             next_state, reward = env.step(current_state, action)
-
-            # choose A' from S' using e-greedy
-            next_action = ep_greedy(next_state)
-            current_dealer, current_player = current_state
             next_dealer, next_player = next_state
-
-            # calculate the TD error (delta)
-            next_q_values = q_states_actions[next_dealer-1, next_player-1, next_action]
+            print ("next_dealer is %d, next_player is %d, immediate reward is %d" % (next_dealer, next_player, reward))
+            current_dealer, current_player = current_state
             current_q_values = q_states_actions[current_dealer-1, current_player-1, action]
-            td_error = reward + (GAMMA * next_q_values) - current_q_values
+            # if we should still proceed
+            if(next_dealer <= 10 and next_player <= 21):
+                # choose A' from S' using e-greedy
+                next_action = ep_greedy(next_state)
+
+                # calculate the TD error (delta)
+                next_q_values = q_states_actions[next_dealer-1, next_player-1, next_action]
+                td_error = reward + (GAMMA * next_q_values) - current_q_values
+            else:
+                td_error = reward - current_q_values
+            
             # add eligibility traces + 1
-            e_states_actions[current_dealer, current_player, action] += 1
+            e_states_actions[current_dealer-1, current_player-1, action] += 1
 
             # calculate step size online
             possible_states[current_dealer-1, current_player-1] += 1
@@ -103,13 +120,20 @@ def main():
 
             # update all action-value and eligilibity traces
             q_states_actions += alpha * td_error * e_states_actions
-            e_states_actions += GAMMA * LAMBDA * e_states_actions
-            
-            if(dealer <= 10 and player <= 21):
+            e_states_actions = GAMMA * LAMBDA * e_states_actions
+
+            if(next_dealer <= 10 and next_player <= 21):
                 current_state = next_state
                 action = next_action
-    
-    print (q_states_actions)
+
+    # Read the q true from disk
+    q_true_txt = np.loadtxt('q_true.txt')
+
+    # original shape of the array
+    q_true = q_true_txt.reshape((DEALER_STATE,PLAYER_STATE,ACTIONS))
+    q_diff = q_states_actions - q_true
+    q_summed = np.sum(np.power(q_diff, 2))
+    print (q_summed / (21 * 10 * 2))
 
 if __name__ == '__main__':
     main()

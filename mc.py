@@ -2,6 +2,7 @@ from easy21 import Easy21
 import numpy as np
 import matplotlib.pyplot as plot 
 from mpl_toolkits.mplot3d import Axes3D
+import pandas as pd
 
 """
 Monte-carlo control to solve easy21
@@ -93,21 +94,13 @@ def main():
             # update our value function in the direction towards the reward
             q_states_actions[dealer-1, player-1, action] += alpha * (total_reward - q_states_actions[dealer-1, player-1, action])
 
-    # plot
-    fig = plot.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    with open('q_true.txt', 'w+') as outfile:
+        outfile.write('# Array shape: {0}\n'.format(q_states_actions.shape))
 
-    x = np.arange(10, 22, 1.0)
-    y = np.arange(1, 11, 1.0)
-    xs, ys = np.meshgrid(x, y)
-    print(xs.shape)
-    print(ys.shape)
+        # equivalent to array[i,:,:]
+        for data_slice in q_states_actions:
+            np.savetxt(outfile, data_slice, fmt='%-7.2f')
 
-    v_mat = np.amax(q_states_actions, axis=2)
-    v_mat_trunc = v_mat[:,9:]
-    print(v_mat_trunc.shape)
-    ax.plot_wireframe(xs, ys, v_mat_trunc, rstride=1, cstride=1)
-    plot.show()
-
+            outfile.write('# New slice \n')
 if __name__ == '__main__':
     main()
