@@ -1,9 +1,7 @@
 from easy21 import Easy21
 import numpy as np
-import matplotlib.pyplot as plot 
-from mpl_toolkits.mplot3d import Axes3D
 """
-    TD lambda sarsa implementation to solve easy21
+    sarsa lambda 1-step implementation to solve easy21
 """
 
 # states matrix for dealer and player
@@ -11,8 +9,8 @@ DEALER_STATE = 10 # 1 - 10
 PLAYER_STATE = 21 # 1 - 21
 ACTIONS = 2
 
-# LAMBDA 1 = MC
-LAMBDA = 0.1
+# LAMBDA 1
+LAMBDA = 0.9
 # Discount factor
 GAMMA = 1
 
@@ -22,10 +20,6 @@ q_states_actions = np.zeros((DEALER_STATE, PLAYER_STATE, ACTIONS), dtype=np.floa
 # our number of counts
 possible_states = np.zeros((DEALER_STATE, PLAYER_STATE), dtype=int)
 possible_states_actions = np.zeros((DEALER_STATE, PLAYER_STATE, ACTIONS), dtype=int)
-
-# eligibility traces
-e_states_actions = np.zeros((DEALER_STATE, PLAYER_STATE, ACTIONS), dtype=np.float32)
-
 
 def get_count(state):
     dealer, player = state
@@ -69,7 +63,6 @@ def main():
     runs = 1000
     
     global q_states_actions
-    global e_states_actions
     global possible_states
     global possible_states_actions
     global GAMMA
@@ -86,7 +79,7 @@ def main():
         start_state = env.state()  
         action = ep_greedy(start_state)
 
-        # eligibility traces
+        # re-init eligibility traces each episode
         e_states_actions = np.zeros((DEALER_STATE, PLAYER_STATE, ACTIONS), dtype=np.float32)
 
         while not env.is_finished():
@@ -108,19 +101,20 @@ def main():
             else:
                 td_error = reward - current_q_values
             
-            # add eligibility traces + 1
+            # add counts during the episode
             e_states_actions[current_dealer-1, current_player-1, action] += 1
-
-            # calculate step size online
             possible_states[current_dealer-1, current_player-1] += 1
             possible_states_actions[current_dealer-1, current_player-1, action] += 1
-
             # step-size
             alpha = 1/possible_states_actions[current_dealer-1, current_player-1, action]
+            results.append((current_state, action))
 
-            # update all action-value and eligilibity traces
-            q_states_actions += alpha * td_error * e_states_actions
-            e_states_actions = GAMMA * LAMBDA * e_states_actions
+            # update the action-value for the whole of episode of each steps
+            for (state, action) in results:
+                # update all action-value and eligilibity traces in the results
+                dealer, player = state
+                q_states_actions[dealer-1, player-1, action] += alpha * td_error * e_states_actions[dealer-1, player-1, action]
+                e_states_actions[dealer-1, player-1, action] = GAMMA * LAMBDA * e_states_actions[dealer-1, player-1, action]
 
             if(next_dealer <= 10 and next_player <= 21):
                 current_state = next_state
@@ -132,8 +126,7 @@ def main():
     # original shape of the array
     q_true = q_true_txt.reshape((DEALER_STATE,PLAYER_STATE,ACTIONS))
     q_diff = q_states_actions - q_true
-    q_summed = np.sum(np.power(q_diff, 2))
-    print (q_summed / (21 * 10 * 2))
+    print(np.mean(np.square(q_diff)))
 
 if __name__ == '__main__':
     main()

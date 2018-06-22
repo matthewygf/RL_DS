@@ -58,7 +58,7 @@ def ep_greedy(state):
 def main():
     #initialize
     env = Easy21()
-    runs = 5000
+    runs = 1000
 
     for t in range(runs):
         env.start()
@@ -84,6 +84,7 @@ def main():
             if(dealer <= 10 and player <= 21):
                 current_state = next_state
 
+        # after an end of the episode
         for (state, action) in results:
             # incremet the state count
             dealer, player = state
