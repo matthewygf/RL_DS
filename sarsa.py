@@ -9,8 +9,6 @@ DEALER_STATE = 10 # 1 - 10
 PLAYER_STATE = 21 # 1 - 21
 ACTIONS = 2
 
-# LAMBDA 1
-LAMBDA = 0.9
 # Discount factor
 GAMMA = 1
 
@@ -66,67 +64,68 @@ def main():
     global possible_states
     global possible_states_actions
     global GAMMA
-    global LAMBDA
 
-    # run our episodes
-    for t in range(runs):
-        # initialize our records
-        results = []
-        total_reward = 0.0
-        # start the game
-        env.start()
-        #initialise first state and action
-        start_state = env.state()  
-        action = ep_greedy(start_state)
+    for x in [x * 0.1 for x in range(0, 10)]:
+        lambda_x = x
+        # run our episodes
+        for t in range(runs):
+            # initialize our records
+            results = []
+            total_reward = 0.0
+            # start the game
+            env.start()
+            #initialise first state and action
+            start_state = env.state()  
+            action = ep_greedy(start_state)
 
-        # re-init eligibility traces each episode
-        e_states_actions = np.zeros((DEALER_STATE, PLAYER_STATE, ACTIONS), dtype=np.float32)
+            # re-init eligibility traces each episode
+            e_states_actions = np.zeros((DEALER_STATE, PLAYER_STATE, ACTIONS), dtype=np.float32)
 
-        while not env.is_finished():
-            current_state = env.state()
-            # take action A, observe S' , Reward
-            next_state, reward = env.step(current_state, action)
-            next_dealer, next_player = next_state
-            print ("next_dealer is %d, next_player is %d, immediate reward is %d" % (next_dealer, next_player, reward))
-            current_dealer, current_player = current_state
-            current_q_values = q_states_actions[current_dealer-1, current_player-1, action]
-            # if we should still proceed
-            if(next_dealer <= 10 and next_player <= 21):
-                # choose A' from S' using e-greedy
-                next_action = ep_greedy(next_state)
+            while not env.is_finished():
+                current_state = env.state()
+                # take action A, observe S' , Reward
+                next_state, reward = env.step(current_state, action)
+                next_dealer, next_player = next_state
+                #print ("next_dealer is %d, next_player is %d, immediate reward is %d" % (next_dealer, next_player, reward))
+                current_dealer, current_player = current_state
+                current_q_values = q_states_actions[current_dealer-1, current_player-1, action]
+                # if we should still proceed
+                if(next_dealer <= 10 and next_player <= 21):
+                    # choose A' from S' using e-greedy
+                    next_action = ep_greedy(next_state)
 
-                # calculate the TD error (delta)
-                next_q_values = q_states_actions[next_dealer-1, next_player-1, next_action]
-                td_error = reward + (GAMMA * next_q_values) - current_q_values
-            else:
-                td_error = reward - current_q_values
-            
-            # add counts during the episode
-            e_states_actions[current_dealer-1, current_player-1, action] += 1
-            possible_states[current_dealer-1, current_player-1] += 1
-            possible_states_actions[current_dealer-1, current_player-1, action] += 1
-            # step-size
-            alpha = 1/possible_states_actions[current_dealer-1, current_player-1, action]
-            results.append((current_state, action))
+                    # calculate the TD error (delta)
+                    next_q_values = q_states_actions[next_dealer-1, next_player-1, next_action]
+                    td_error = reward + (GAMMA * next_q_values) - current_q_values
+                else:
+                    td_error = reward - current_q_values
+                
+                # add counts during the episode
+                e_states_actions[current_dealer-1, current_player-1, action] += 1
+                possible_states[current_dealer-1, current_player-1] += 1
+                possible_states_actions[current_dealer-1, current_player-1, action] += 1
+                # step-size
+                alpha = 1/possible_states_actions[current_dealer-1, current_player-1, action]
+                results.append((current_state, action))
 
-            # update the action-value for the whole of episode of each steps
-            for (state, action) in results:
-                # update all action-value and eligilibity traces in the results
-                dealer, player = state
-                q_states_actions[dealer-1, player-1, action] += alpha * td_error * e_states_actions[dealer-1, player-1, action]
-                e_states_actions[dealer-1, player-1, action] = GAMMA * LAMBDA * e_states_actions[dealer-1, player-1, action]
+                # update the action-value for the whole of episode of each steps
+                for (state, action) in results:
+                    # update all action-value and eligilibity traces in the results
+                    dealer, player = state
+                    q_states_actions[dealer-1, player-1, action] += alpha * td_error * e_states_actions[dealer-1, player-1, action]
+                    e_states_actions[dealer-1, player-1, action] = GAMMA * lambda_x * e_states_actions[dealer-1, player-1, action]
 
-            if(next_dealer <= 10 and next_player <= 21):
-                current_state = next_state
-                action = next_action
+                if(next_dealer <= 10 and next_player <= 21):
+                    current_state = next_state
+                    action = next_action
 
-    # Read the q true from disk
-    q_true_txt = np.loadtxt('q_true.txt')
+        # Read the q true from disk
+        q_true_txt = np.loadtxt('q_true.txt')
 
-    # original shape of the array
-    q_true = q_true_txt.reshape((DEALER_STATE,PLAYER_STATE,ACTIONS))
-    q_diff = q_states_actions - q_true
-    print(np.mean(np.square(q_diff)))
+        # original shape of the array
+        q_true = q_true_txt.reshape((DEALER_STATE,PLAYER_STATE,ACTIONS))
+        q_diff = q_states_actions - q_true
+        print(np.mean(np.square(q_diff)))
 
 if __name__ == '__main__':
     main()

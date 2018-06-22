@@ -32,7 +32,7 @@ class Easy21:
         return (self.dealers_hand, self.players_sum)
 
     def game_finished(self):
-        print ("setting game to finished state")
+        #print ("setting game to finished state")
         self.finished = True
 
     def is_finished(self):
