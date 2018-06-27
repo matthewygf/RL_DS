@@ -71,10 +71,9 @@ def main():
         for t in range(runs):
             # initialize our records
             results = []
-            total_reward = 0.0
             # start the game
             env.start()
-            #initialise first state and action
+            # initialize first state and action
             start_state = env.state()  
             action = ep_greedy(start_state)
 
